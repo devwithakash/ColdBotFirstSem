@@ -8,5 +8,9 @@ RUN pip install flask
 
 COPY app.py .
 
+# --- ADD THIS LINE ---
+EXPOSE 5000
+# ---
+
 # The command to run when the container starts
 CMD ["python", "app.py"]
