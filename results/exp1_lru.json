@@ -1,0 +1,34 @@
+{
+    "functions": {
+        "function-a": {
+            "cold_starts": 6,
+            "limit_reached": 0,
+            "requests_executed": 10,
+            "requests_queued": 0,
+            "requests_received": 10,
+            "warm_starts": 4
+        },
+        "function-b": {
+            "cold_starts": 6,
+            "limit_reached": 0,
+            "requests_executed": 30,
+            "requests_queued": 0,
+            "requests_received": 30,
+            "warm_starts": 24
+        },
+        "function-c": {
+            "cold_starts": 5,
+            "limit_reached": 0,
+            "requests_executed": 10,
+            "requests_queued": 0,
+            "requests_received": 10,
+            "warm_starts": 5
+        }
+    },
+    "total_cold_starts": 17,
+    "total_limit_reached": 0,
+    "total_requests_executed": 50,
+    "total_requests_queued": 0,
+    "total_requests_received": 50,
+    "total_warm_starts": 33
+}

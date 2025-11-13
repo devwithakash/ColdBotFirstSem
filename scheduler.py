@@ -26,17 +26,17 @@ FUNCTION_POOLS = {
     "function-a": {
         "pool": {},
         "queue": queue.Queue(),
-        "limit": 5
+        "limit": 8
     },
     "function-b": {
         "pool": {},
         "queue": queue.Queue(),
-        "limit": 3 # Give B a smaller limit for testing
+        "limit": 8 # Give B a smaller limit for testing
     },
     "function-c": {
         "pool": {},
         "queue": queue.Queue(),
-        "limit": 3
+        "limit": 8
     }
 }
 POOLS_LOCK = threading.Lock()
