@@ -2,33 +2,33 @@
     "functions": {
         "function-a": {
             "cold_starts": 8,
-            "limit_reached": 6,
-            "requests_executed": 60,
-            "requests_queued": 6,
-            "requests_received": 60,
-            "warm_starts": 46
+            "limit_reached": 14,
+            "requests_executed": 40,
+            "requests_queued": 14,
+            "requests_received": 40,
+            "warm_starts": 18
         },
         "function-b": {
-            "cold_starts": 11,
+            "cold_starts": 6,
             "limit_reached": 0,
-            "requests_executed": 40,
+            "requests_executed": 25,
             "requests_queued": 0,
-            "requests_received": 40,
-            "warm_starts": 29
+            "requests_received": 25,
+            "warm_starts": 19
         },
         "function-c": {
-            "cold_starts": 14,
-            "limit_reached": 11,
-            "requests_executed": 50,
-            "requests_queued": 11,
-            "requests_received": 50,
-            "warm_starts": 25
+            "cold_starts": 11,
+            "limit_reached": 4,
+            "requests_executed": 35,
+            "requests_queued": 4,
+            "requests_received": 35,
+            "warm_starts": 20
         }
     },
-    "total_cold_starts": 33,
-    "total_limit_reached": 17,
-    "total_requests_executed": 150,
-    "total_requests_queued": 17,
-    "total_requests_received": 150,
-    "total_warm_starts": 100
+    "total_cold_starts": 25,
+    "total_limit_reached": 18,
+    "total_requests_executed": 100,
+    "total_requests_queued": 18,
+    "total_requests_received": 100,
+    "total_warm_starts": 57
 }

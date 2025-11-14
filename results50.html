@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LCS vs MRU Simulation Results</title>
+    <!-- 1. Import Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        .chart-box {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            padding: 20px;
+        }
+        
+        /* NEW: Summary box styles */
+        .summary-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            text-align: center;
+        }
+        .stat-box {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .stat-box h3 {
+            margin: 0 0 10px 0;
+            color: #34495e;
+        }
+        .stat-box p {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 0;
+            color: #2c3e50;
+        }
+        .stat-box .lcs { color: #3498db; }
+        .stat-box .mru { color: #e74c3c; }
+
+
+        .grouped-chart {
+            grid-column: 1 / -1; /* Span full width */
+        }
+        
+        @media (min-width: 900px) {
+            .container {
+                /* Create a 3-column layout for the simple charts */
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>FaaS Scheduler Simulation Analysis</h1>
+    <h2 id="subtitle"></h2>
+
+    <!-- NEW: Summary Section -->
+    <div class="summary-container">
+        <div class="stat-box">
+            <h3>Total Requests (LCS)</h3>
+            <p class="lcs" id="lcs-total-requests">0</p>
+        </div>
+        <div class="stat-box">
+            <h3>Total Requests (MRU)</h3>
+            <p class="mru" id="mru-total-requests">0</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Chart 1: Total Cold Starts -->
+        <div class="chart-box">
+            <h2>Total Cold Starts</h2>
+            <canvas id="chart-cold-starts"></canvas>
+        </div>
+
+        <!-- NEW Chart 2: Total Warm Starts -->
+        <div class="chart-box">
+            <h2>Total Warm Starts</h2>
+            <canvas id="chart-warm-starts"></canvas>
+        </div>
+
+        <!-- Chart 3: Total Requests Queued -->
+        <div class="chart-box">
+            <h2>Total Requests Queued</h2>
+            <canvas id="chart-queued-requests"></canvas>
+        </div>
+
+        <!-- Chart 4: Grouped Bar Chart by Function -->
+        <div class="chart-box grouped-chart">
+            <h2>Detailed Comparison by Function</h2>
+            <canvas id="chart-grouped-functions"></canvas>
+        </div>
+    </div>
+
+    <script type="module">
+        // 2. YOUR EMBEDDED TEST DATA
+        import lcsData from './results/exp1_lru.json' with { type: "json" }; 
+
+        import mruData from './results/exp1_mru.json' with { type: "json" }; 
+        // 3. CHART RENDERING LOGIC
+        
+        // --- NEW: Update Summary Info ---
+        document.getElementById('lcs-total-requests').innerText = lcsData.total_requests_received;
+        document.getElementById('mru-total-requests').innerText = mruData.total_requests_received;
+        document.getElementById('subtitle').innerText = `LCS (${lcsData.total_requests_received} reqs) vs. MRU (${mruData.total_requests_received} reqs)`;
+
+
+        const lcsColor = 'rgba(54, 162, 235, 0.8)'; // Blue
+        const mruColor = 'rgba(255, 99, 132, 0.8)'; // Red
+        const lcsColorBorder = 'rgba(54, 162, 235, 1)';
+        const mruColorBorder = 'rgba(255, 99, 132, 1)';
+
+        // Chart 1: Total Cold Starts
+        new Chart(document.getElementById('chart-cold-starts'), {
+            type: 'bar',
+            data: {
+                labels: ['LCS (Paper\'s Method)', 'MRU (Default)'],
+                datasets: [{
+                    label: 'Total Cold Starts',
+                    data: [lcsData.total_cold_starts, mruData.total_cold_starts],
+                    backgroundColor: [lcsColor, mruColor],
+                    borderColor: [lcsColorBorder, mruColorBorder],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) { label += ': '; }
+                                label += context.raw;
+                                if (context.label === 'LCS (Paper\'s Method)') {
+                                    const reduction = mruData.total_cold_starts - lcsData.total_cold_starts;
+                                    const percent = (reduction / mruData.total_cold_starts * 100).toFixed(1);
+                                    label += ` (${percent}% reduction)`;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // NEW Chart 2: Total Warm Starts
+        new Chart(document.getElementById('chart-warm-starts'), {
+            type: 'bar',
+            data: {
+                labels: ['LCS', 'MRU'],
+                datasets: [{
+                    label: 'Total Warm Starts',
+                    data: [lcsData.total_warm_starts, mruData.total_warm_starts],
+                    backgroundColor: [lcsColor, mruColor],
+                    borderColor: [lcsColorBorder, mruColorBorder],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+
+        // Chart 3: Total Requests Queued
+        new Chart(document.getElementById('chart-queued-requests'), {
+            type: 'bar',
+            data: {
+                labels: ['LCS', 'MRU'],
+                datasets: [{
+                    label: 'Total Requests Queued',
+                    data: [lcsData.total_requests_queued, mruData.total_requests_queued],
+                    backgroundColor: [lcsColor, mruColor],
+                    borderColor: [lcsColorBorder, mruColorBorder],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // Chart 4: Grouped by Function
+        const labels = ['function-a', 'function-b', 'function-c'];
+        new Chart(document.getElementById('chart-grouped-functions'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'LCS Cold Starts',
+                        data: labels.map(f => lcsData.functions[f]?.cold_starts || 0),
+                        backgroundColor: lcsColor,
+                        borderColor: lcsColorBorder,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'MRU Cold Starts',
+                        data: labels.map(f => mruData.functions[f]?.cold_starts || 0),
+                        backgroundColor: mruColor,
+                        borderColor: mruColorBorder,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'LCS Queued',
+                        data: labels.map(f => lcsData.functions[f]?.requests_queued || 0),
+                        backgroundColor: 'rgba(54, 162, 235, 0.3)', // Lighter blue
+                        borderColor: lcsColorBorder,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'MRU Queued',
+                        data: labels.map(f => mruData.functions[f]?.requests_queued || 0),
+                        backgroundColor: 'rgba(255, 99, 132, 0.3)', // Lighter red
+                        borderColor: mruColorBorder,
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } } },
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+
+    </script>
+</body>
+</html>

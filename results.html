@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LCS vs MRU Simulation Results</title>
-    <!-- 1. Import Chart.js -->
+
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -31,245 +33,267 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             padding: 20px;
         }
-        
-        /* NEW: Summary box styles */
-        .summary-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            text-align: center;
-        }
-        .stat-box {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-        .stat-box h3 {
-            margin: 0 0 10px 0;
-            color: #34495e;
-        }
-        .stat-box p {
-            font-size: 2.5em;
-            font-weight: bold;
-            margin: 0;
-            color: #2c3e50;
-        }
-        .stat-box .lcs { color: #3498db; }
-        .stat-box .mru { color: #e74c3c; }
-
-
         .grouped-chart {
-            grid-column: 1 / -1; /* Span full width */
+            grid-column: 1 / -1;
         }
-        
+        .line-chart-small {
+        max-width: 800px;
+        margin: 20px auto;
+        }
+        .line-chart-small canvas {
+            height: 260px !important;   /* adjust as needed */
+        }
         @media (min-width: 900px) {
             .container {
-                /* Create a 3-column layout for the simple charts */
                 grid-template-columns: 1fr 1fr 1fr;
             }
         }
     </style>
 </head>
 <body>
+
     <h1>FaaS Scheduler Simulation Analysis</h1>
-    <h2 id="subtitle"></h2>
 
-    <!-- NEW: Summary Section -->
-    <div class="summary-container">
-        <div class="stat-box">
-            <h3>Total Requests (LCS)</h3>
-            <p class="lcs" id="lcs-total-requests">0</p>
-        </div>
-        <div class="stat-box">
-            <h3>Total Requests (MRU)</h3>
-            <p class="mru" id="mru-total-requests">0</p>
-        </div>
-    </div>
+    <div class="container" id="charts-container"></div>
 
-    <div class="container">
-        <!-- Chart 1: Total Cold Starts -->
-        <div class="chart-box">
-            <h2>Total Cold Starts</h2>
-            <canvas id="chart-cold-starts"></canvas>
-        </div>
+    <!-- SCRIPTS -->
+    <script type="module">
 
-        <!-- NEW Chart 2: Total Warm Starts -->
-        <div class="chart-box">
-            <h2>Total Warm Starts</h2>
-            <canvas id="chart-warm-starts"></canvas>
-        </div>
+        // ⭐ Number of experiments
+        const experimentCount = 3;
 
-        <!-- Chart 3: Total Requests Queued -->
-        <div class="chart-box">
-            <h2>Total Requests Queued</h2>
-            <canvas id="chart-queued-requests"></canvas>
-        </div>
+        const lcsColor = 'rgba(54, 162, 235, 0.8)';
+        const mruColor = 'rgba(255, 99, 132, 0.8)';
+        const lcsBorder = 'rgba(54, 162, 235, 1)';
+        const mruBorder = 'rgba(255, 99, 132, 1)';
 
-        <!-- Chart 4: Grouped Bar Chart by Function -->
-        <div class="chart-box grouped-chart">
-            <h2>Detailed Comparison by Function</h2>
-            <canvas id="chart-grouped-functions"></canvas>
-        </div>
-    </div>
+        const container = document.getElementById("charts-container");
 
-    <script>
-        // 2. YOUR EMBEDDED TEST DATA
-        const lcsData = {
-            "functions": {
-                "function-a": { "cold_starts": 5, "requests_queued": 1, "warm_starts": 7, "requests_received": 13 },
-                "function-b": { "cold_starts": 3, "requests_queued": 16, "warm_starts": 4, "requests_received": 23 },
-                "function-c": { "cold_starts": 6, "requests_queued": 14, "warm_starts": 6, "requests_received": 26 }
-            },
-            "total_cold_starts": 14,
-            "total_requests_queued": 31,
-            "total_warm_starts": 17,
-            "total_requests_received": 62
-        };
+        async function loadJson(path) {
+            return (await import(path, { with: { type: "json" } })).default;
+        }
 
-        const mruData = {
-            "functions": {
-                "function-a": { "cold_starts": 6, "requests_queued": 3, "warm_starts": 8, "requests_received": 17 },
-                "function-b": { "cold_starts": 9, "requests_queued": 9, "warm_starts": 2, "requests_received": 20 },
-                "function-c": { "cold_starts": 6, "requests_queued": 12, "warm_starts": 7, "requests_received": 25 }
-            },
-            "total_cold_starts": 21,
-            "total_requests_queued": 24,
-            "total_warm_starts": 17,
-            "total_requests_received": 62
-        };
+        async function loadExperiment(i) {
+            const lcs = await loadJson(`./results/exp${i}_lru.json`);
+            const mru = await loadJson(`./results/exp${i}_mru.json`);
+            return { lcs, mru };
+        }
 
-        // 3. CHART RENDERING LOGIC
-        
-        // --- NEW: Update Summary Info ---
-        document.getElementById('lcs-total-requests').innerText = lcsData.total_requests_received;
-        document.getElementById('mru-total-requests').innerText = mruData.total_requests_received;
-        document.getElementById('subtitle').innerText = `LCS (${lcsData.total_requests_received} reqs) vs. MRU (${mruData.total_requests_received} reqs)`;
+        async function renderAllExperiments() {
 
+            const allLcs = [];
+            const allMru = [];
 
-        const lcsColor = 'rgba(54, 162, 235, 0.8)'; // Blue
-        const mruColor = 'rgba(255, 99, 132, 0.8)'; // Red
-        const lcsColorBorder = 'rgba(54, 162, 235, 1)';
-        const mruColorBorder = 'rgba(255, 99, 132, 1)';
+            for (let i = 1; i <= experimentCount; i++) {
+                const { lcs, mru } = await loadExperiment(i);
 
-        // Chart 1: Total Cold Starts
-        new Chart(document.getElementById('chart-cold-starts'), {
-            type: 'bar',
-            data: {
-                labels: ['LCS (Paper\'s Method)', 'MRU (Default)'],
-                datasets: [{
-                    label: 'Total Cold Starts',
-                    data: [lcsData.total_cold_starts, mruData.total_cold_starts],
-                    backgroundColor: [lcsColor, mruColor],
-                    borderColor: [lcsColorBorder, mruColorBorder],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } } },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) { label += ': '; }
-                                label += context.raw;
-                                if (context.label === 'LCS (Paper\'s Method)') {
-                                    const reduction = mruData.total_cold_starts - lcsData.total_cold_starts;
-                                    const percent = (reduction / mruData.total_cold_starts * 100).toFixed(1);
-                                    label += ` (${percent}% reduction)`;
-                                }
-                                return label;
-                            }
-                        }
-                    }
+                allLcs.push(lcs);
+                allMru.push(mru);
+
+                renderExperiment(i, lcs, mru);
+            }
+
+            // NEW — two line charts
+            renderColdVsRequests(allLcs, allMru);
+            renderWarmVsRequests(allLcs, allMru);
+        }
+
+        function renderExperiment(i, lcsData, mruData) {
+
+            const csID  = `cs-${i}`;
+            const wsID  = `ws-${i}`;
+            const rqID  = `rq-${i}`;
+            const funcID = `func-${i}`;
+
+            const block = document.createElement("div");
+
+            block.innerHTML = `
+                <div style="grid-column: 1 / -1; margin-top:40px;">
+                    <h2>Experiment ${i}</h2>
+                </div>
+
+                <!-- ⭐ Total Requests Summary -->
+                <div class="chart-box" style="grid-column: 1 / -1; text-align:center;">
+                    <h3>Total Requests = ${lcsData.total_requests_received}</h3>
+                </div>
+
+                <div class="chart-box">
+                    <h2>Total Cold Starts</h2>
+                    <canvas id="${csID}"></canvas>
+                </div>
+
+                <div class="chart-box">
+                    <h2>Total Warm Starts</h2>
+                    <canvas id="${wsID}"></canvas>
+                </div>
+
+                <div class="chart-box">
+                    <h2>Total Requests Queued</h2>
+                    <canvas id="${rqID}"></canvas>
+                </div>
+
+                <div class="chart-box grouped-chart">
+                    <h2>Detailed Comparison by Function</h2>
+                    <canvas id="${funcID}"></canvas>
+                </div>
+            `;
+
+            container.appendChild(block);
+
+            new Chart(document.getElementById(csID), {
+                type: 'bar',
+                data: {
+                    labels: ['LCS', 'MRU'],
+                    datasets: [{
+                        label: 'Cold Starts',
+                        data: [lcsData.total_cold_starts, mruData.total_cold_starts],
+                        backgroundColor: [lcsColor, mruColor],
+                        borderColor: [lcsBorder, mruBorder],
+                        borderWidth: 1
+                    }]
                 }
-            }
-        });
+            });
 
-        // NEW Chart 2: Total Warm Starts
-        new Chart(document.getElementById('chart-warm-starts'), {
-            type: 'bar',
-            data: {
-                labels: ['LCS', 'MRU'],
-                datasets: [{
-                    label: 'Total Warm Starts',
-                    data: [lcsData.total_warm_starts, mruData.total_warm_starts],
-                    backgroundColor: [lcsColor, mruColor],
-                    borderColor: [lcsColorBorder, mruColorBorder],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } } },
-                plugins: { legend: { display: false } }
-            }
-        });
+            new Chart(document.getElementById(wsID), {
+                type: 'bar',
+                data: {
+                    labels: ['LCS', 'MRU'],
+                    datasets: [{
+                        label: 'Warm Starts',
+                        data: [lcsData.total_warm_starts, mruData.total_warm_starts],
+                        backgroundColor: [lcsColor, mruColor],
+                        borderColor: [lcsBorder, mruBorder],
+                        borderWidth: 1
+                    }]
+                }
+            });
 
+            new Chart(document.getElementById(rqID), {
+                type: 'bar',
+                data: {
+                    labels: ['LCS', 'MRU'],
+                    datasets: [{
+                        label: 'Requests Queued',
+                        data: [lcsData.total_requests_queued, mruData.total_requests_queued],
+                        backgroundColor: [lcsColor, mruColor],
+                        borderColor: [lcsBorder, mruBorder],
+                        borderWidth: 1
+                    }]
+                }
+            });
 
-        // Chart 3: Total Requests Queued
-        new Chart(document.getElementById('chart-queued-requests'), {
-            type: 'bar',
-            data: {
-                labels: ['LCS', 'MRU'],
-                datasets: [{
-                    label: 'Total Requests Queued',
-                    data: [lcsData.total_requests_queued, mruData.total_requests_queued],
-                    backgroundColor: [lcsColor, mruColor],
-                    borderColor: [lcsColorBorder, mruColorBorder],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } } },
-                plugins: { legend: { display: false } }
-            }
-        });
+            const funcs = Object.keys(lcsData.functions);
+            new Chart(document.getElementById(funcID), {
+                type: 'bar',
+                data: {
+                    labels: funcs,
+                    datasets: [
+                        {
+                            label: 'LCS Cold',
+                            data: funcs.map(f => lcsData.functions[f].cold_starts),
+                            backgroundColor: lcsColor,
+                            borderColor: lcsBorder,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'MRU Cold',
+                            data: funcs.map(f => mruData.functions[f].cold_starts),
+                            backgroundColor: mruColor,
+                            borderColor: mruBorder,
+                            borderWidth: 1
+                        }
+                    ]
+                }
+            });
+        }
 
-        // Chart 4: Grouped by Function
-        const labels = ['function-a', 'function-b', 'function-c'];
-        new Chart(document.getElementById('chart-grouped-functions'), {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'LCS Cold Starts',
-                        data: labels.map(f => lcsData.functions[f]?.cold_starts || 0),
-                        backgroundColor: lcsColor,
-                        borderColor: lcsColorBorder,
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'MRU Cold Starts',
-                        data: labels.map(f => mruData.functions[f]?.cold_starts || 0),
-                        backgroundColor: mruColor,
-                        borderColor: mruColorBorder,
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'LCS Queued',
-                        data: labels.map(f => lcsData.functions[f]?.requests_queued || 0),
-                        backgroundColor: 'rgba(54, 162, 235, 0.3)', // Lighter blue
-                        borderColor: lcsColorBorder,
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'MRU Queued',
-                        data: labels.map(f => mruData.functions[f]?.requests_queued || 0),
-                        backgroundColor: 'rgba(255, 99, 132, 0.3)', // Lighter red
-                        borderColor: mruColorBorder,
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } } },
-                plugins: { legend: { position: 'top' } }
-            }
-        });
+        /* =============================================================
+            NEW LINE CHART #1
+            Cold Starts vs Total Requests
+        ============================================================= */
+        function renderColdVsRequests(allLcs, allMru) {
+            const canvas = document.createElement("canvas");
+            const box = document.createElement("div");
+            box.classList.add("chart-box", "line-chart-small");
+
+            box.style.marginTop = "50px";
+            box.innerHTML = `<h2 style="text-align:center;">Cold Starts vs Total Requests</h2>`;
+            box.appendChild(canvas);
+            document.body.appendChild(box);
+
+            new Chart(canvas, {
+                type: "line",
+                data: {
+                    labels: allLcs.map(d => d.total_requests_received),
+                    datasets: [
+                        {
+                            label: "LCS Cold Starts",
+                            data: allLcs.map(d => d.total_cold_starts),
+                            borderColor: lcsBorder,
+                            backgroundColor: lcsColor,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHoverRadius: 0
+                        },
+                        {
+                            label: "MRU Cold Starts",
+                            data: allMru.map(d => d.total_cold_starts),
+                            borderColor: mruBorder,
+                            backgroundColor: mruColor,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHoverRadius: 0
+                        }
+                    ]
+                }
+            });
+        }
+
+        /* =============================================================
+            NEW LINE CHART #2
+            Warm Starts vs Total Requests
+        ============================================================= */
+        function renderWarmVsRequests(allLcs, allMru) {
+            const canvas = document.createElement("canvas");
+            const box = document.createElement("div");
+            box.classList.add("chart-box", "line-chart-small");
+
+            box.style.marginTop = "50px";
+            box.innerHTML = `<h2 style="text-align:center;">Warm Starts vs Total Requests</h2>`;
+            box.appendChild(canvas);
+            document.body.appendChild(box);
+
+            new Chart(canvas, {
+                type: "line",
+                data: {
+                    labels: allLcs.map(d => d.total_requests_received),
+                    datasets: [
+                        {
+                            label: "LCS Warm Starts",
+                            data: allLcs.map(d => d.total_warm_starts),
+                            borderColor: lcsBorder,
+                            backgroundColor: lcsColor,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHoverRadius: 0
+                        },
+                        {
+                            label: "MRU Warm Starts",
+                            data: allMru.map(d => d.total_warm_starts),
+                            borderColor: mruBorder,
+                            backgroundColor: mruColor,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHoverRadius: 0
+                        }
+                    ]
+                }
+            });
+        }
+
+        renderAllExperiments();
 
     </script>
+
 </body>
 </html>
