@@ -98,7 +98,7 @@ Make it executable once:
 chmod +x run_experiment.sh
 ```
 
-###Run
+### Run
 ```bash
 ./run_experiment.sh <strategy> <exp_no> <size/5>
 ```
