@@ -98,8 +98,11 @@ Make it executable once:
 chmod +x run_experiment.sh
 ```
 
+###Run
+```bash
 ./run_experiment.sh <strategy> <exp_no> <size/5>
-Examples
+```
+
 #### Run with LCS:
 ```bash
 ./run_experiment.sh lru 1 10
