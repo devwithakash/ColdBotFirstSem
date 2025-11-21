@@ -19,19 +19,22 @@ It demonstrates and tests different **container scheduling strategies** to mitig
 - **Statistics API:** `/stats` endpoint provides detailed JSON metrics (cold/warm starts, queues, etc.).
 
 ---
-
 ## 📁 Project Structure
-
 ```
 .
 ├── my_function/
-│   ├── app.py          # Simple Flask-based function server
-│   └── Dockerfile      # Function container build file
-├── scheduler.py        # Main FaaS scheduler (API + Docker logic)
-├── test_burst.sh       # Automated test script
-├── requirements.txt    # Python dependencies
-└── README.md           # Project documentation
+│   ├── app.py
+│   └── Dockerfile
+├── results/
+│   ├── exp1_lru.json
+│   └── exp1_mru.json
+├── scheduler.py
+├── run_experiment.sh
+├── results.html
+├── requirements.txt
+└── README.md
 ```
+
 
 ---
 
@@ -52,7 +55,7 @@ It demonstrates and tests different **container scheduling strategies** to mitig
 ### 1️⃣ Clone the repository
 ```bash
 git clone <your-repo-url>
-cd lcs-docker-project
+cd coldBootFirstSem
 ```
 
 ### 2️⃣ Build the function container
@@ -86,26 +89,31 @@ Expected Output:
 Starting Scheduler Service...
 Connected to Docker daemon.
 JANITOR: Starting up...
-Starting API server on http://127.0.0.1:8080 with LCS strategy.
+Starting API server on http://127.0.0.1:8080 .
 ```
 
 ### 🧪 Terminal 2: Run the Test Script
 Make it executable once:
 ```bash
-chmod +x test_burst.sh
+chmod +x run_experiment.sh
+```
+
+### Run
+```bash
+./run_experiment.sh <strategy> <exp_no> <size/5>
 ```
 
 #### Run with LCS:
 ```bash
-./test_burst.sh lcs
+./run_experiment.sh lru 1 10
 ```
 
 #### Run with MRU:
 ```bash
-./test_burst.sh mru
+./run_experiment.sh mru 1 10
 ```
 
-Each test runs 4 workloads and outputs stats to JSON (`test_lru_logs.json` / `test_mru_logs.json`).
+Each test runs 4 workloads and outputs stats to JSON (`results/<exp_no>_<strategy>.json`).
 
 ---
 
@@ -130,6 +138,18 @@ Example (Test 3 - Affinity Test):
   "total_requests_queued": 1
 }
 ```
+
+## 📊 Visualization Dashboard
+Run:
+```bash
+python3 -m http.server 8000
+```
+Open:
+```
+http://localhost:8000/results.html
+```
+
+---
 
 📈 **Analysis:** LCS results in fewer cold starts (5 vs. 6) and higher warm reuse (3 vs. 1).
 
